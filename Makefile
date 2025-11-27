@@ -401,6 +401,55 @@ jvm-test: $(JVM_LIB) bindings-kotlin-jvm ## Run Kotlin tests on JVM
 	./gradlew jvm:test --rerun
 
 #-------------------------------------------------------------------------------
+# KMP (Kotlin Multiplatform) builds using Gobley
+#-------------------------------------------------------------------------------
+
+# KMP builds are handled by Gobley Gradle plugins which automatically:
+# - Build Rust native libraries for each platform
+# - Generate UniFFI Kotlin bindings
+# - Package everything into a multiplatform library
+
+.PHONY: kmp
+kmp: ## Build KMP library for host platform (Android, JVM, macOS ARM64; iOS on macOS)
+	cd crypto-ffi/bindings/kmp && \
+	./gradlew assembleRelease jvmJar macosArm64MainKlibrary iosArm64MainKlibrary
+
+.PHONY: kmp-android
+kmp-android: | android-env ## Build KMP library for Android only
+	cd crypto-ffi/bindings/kmp && \
+	./gradlew assembleRelease
+
+.PHONY: kmp-jvm
+kmp-jvm: ## Build KMP library for JVM only
+	cd crypto-ffi/bindings/kmp && \
+	./gradlew jvmJar
+
+.PHONY: kmp-ios
+kmp-ios: ## Build KMP library for iOS ARM64 (macOS only)
+	cd crypto-ffi/bindings/kmp && \
+	./gradlew linkReleaseFrameworkIosArm64
+
+.PHONY: kmp-macos
+kmp-macos: ## Build KMP library for macOS ARM64 (macOS only)
+	cd crypto-ffi/bindings/kmp && \
+	./gradlew linkReleaseFrameworkMacosArm64
+
+.PHONY: kmp-test
+kmp-test: ## Run KMP tests
+	cd crypto-ffi/bindings/kmp && \
+	./gradlew check
+
+.PHONY: kmp-publish-local
+kmp-publish-local: ## Publish KMP library to Maven Local
+	cd crypto-ffi/bindings/kmp && \
+	./gradlew publishToMavenLocal
+
+.PHONY: kmp-clean
+kmp-clean: ## Clean KMP build artifacts
+	cd crypto-ffi/bindings/kmp && \
+	./gradlew clean
+
+#-------------------------------------------------------------------------------
 # TypeScript / JS tasks
 #-------------------------------------------------------------------------------
 
