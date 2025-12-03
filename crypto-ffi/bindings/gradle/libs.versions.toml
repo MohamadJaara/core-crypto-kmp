@@ -1,6 +1,6 @@
 [versions]
 kotlin = "1.9.25"
-coroutines = "1.7.3"
+coroutines = "1.8.1"
 kotlinx-datetime = "0.6.1"
 jna = "5.17.0"
 assertj = "3.24.2"
