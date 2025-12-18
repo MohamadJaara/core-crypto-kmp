@@ -12,7 +12,7 @@ plugins {
     kotlin("plugin.atomicfu") version "2.0.21"
 }
 
-group = "com.wire"
+group = findProperty("GROUP") as String? ?: "io.github.mohamadjaara"
 version = findProperty("VERSION_NAME") as String? ?: "9.1.1"
 
 kotlin {
@@ -124,7 +124,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.wire.crypto"
+    namespace = "io.github.mohamadjaara.crypto"
     compileSdk = libs.versions.sdk.compile.get().toInt()
 
     defaultConfig {
