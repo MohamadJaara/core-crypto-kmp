@@ -49,6 +49,7 @@ kotlin {
 
     sourceSets {
         val commonMain by getting {
+            kotlin.srcDir(projectDir.resolve("../shared/kotlin"))
             dependencies {
                 implementation(libs.coroutines.core)
             }

@@ -62,7 +62,7 @@ tasks.named("compileKotlin") {
 sourceSets {
     main {
         kotlin {
-            srcDir(projectDir.resolve("src/main/kotlin"))
+            srcDir(projectDir.resolve("../shared/kotlin"))
             srcDir(projectDir.resolve("src/main/uniffi"))
         }
         resources {
