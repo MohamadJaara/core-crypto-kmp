@@ -6,11 +6,8 @@ concurrency:
 
 on:
   push:
-    branches:
-      - main
     tags:
       - "v*"
-  pull_request:
 
 env:
   CARGO_TERM_COLOR: always
@@ -20,239 +17,9 @@ env:
 
 jobs:
   #################
-  # Shared between JVM Linux and Android
-
-  uniffi-bindgen-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup-and-cache-rust
-        with:
-          target: x86_64-unknown-linux-gnu
-      - uses: ./.github/actions/make/uniffi-bindgen
-        with:
-          gh-token: ${{ secrets.GITHUB_TOKEN }}
-
-  ffi-library-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup-and-cache-rust
-        with:
-          target: x86_64-unknown-linux-gnu
-      - uses: ./.github/actions/make/ffi-library
-        with:
-          gh-token: ${{ secrets.GITHUB_TOKEN }}
-
-  #################
-  # Android
-
-  build-android:
-    uses: ./.github/workflows/build-android.yml
-
-  package-android:
-    needs:
-      - uniffi-bindgen-linux
-      - ffi-library-linux
-      - build-android
-    uses: ./.github/workflows/package-android.yml
-
-  test-android:
-    needs: package-android
-    uses: ./.github/workflows/test-android.yml
-
-  #################
-  # JVM Darwin
-
-  build-jvm-darwin:
-    if: github.repository == 'wireapp/core-crypto'
-    runs-on: self-hosted
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup-and-cache-rust
-        with:
-          target: aarch64-apple-darwin
-      - uses: ./.github/actions/make/jvm
-        with:
-          gh-token: ${{ secrets.GITHUB_TOKEN }}
-
-  #################
-  # JVM Linux
-
-  build-jvm-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup-and-cache-rust
-        with:
-          target: x86_64-unknown-linux-gnu
-      - uses: ./.github/actions/make/jvm
-        with:
-          gh-token: ${{ secrets.GITHUB_TOKEN }}
-
-  bindings-jvm:
-    needs:
-      - uniffi-bindgen-linux
-      - ffi-library-linux
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup-and-cache-rust
-        with:
-          target: x86_64-unknown-linux-gnu
-      - uses: ./.github/actions/make/bindings-kotlin-jvm
-        with:
-          gh-token: ${{ secrets.GITHUB_TOKEN }}
-
-  test-jvm:
-    needs:
-      - bindings-jvm
-      - build-jvm-linux
-      - build-jvm-darwin
-    uses: ./.github/workflows/test-jvm.yml
-
-  docs-jvm:
-    needs:
-      - bindings-jvm
-      - build-jvm-linux
-    uses: ./.github/workflows/docs-jvm.yml
-
-  #################
-  # iOS/Swift
-
-  build-ios:
-    uses: ./.github/workflows/build-ios.yml
-
-  bindings-swift:
-    if: github.repository == 'wireapp/core-crypto'
-    runs-on: self-hosted
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup-and-cache-rust
-      - uses: ./.github/actions/make/bindings-swift
-        with:
-          gh-token: ${{ secrets.GITHUB_TOKEN }}
-
-  package-ios:
-    needs:
-      - build-ios
-      - bindings-swift
-    uses: ./.github/workflows/package-ios.yml
-
-  test-ios:
-    needs:
-      - build-ios
-      - bindings-swift
-    uses: ./.github/workflows/test-ios.yml
-
-  docs-swift:
-    needs:
-      - build-ios
-      - bindings-swift
-    uses: ./.github/workflows/docs-swift.yml
-
-  #################
-  # Web
-
-  build-wasm:
-    runs-on: ubuntu-latest
-    env:
-      # ensures we have same flags as when publishing
-      RUSTFLAGS: "-D warnings -W unreachable-pub"
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup-and-cache-rust
-        with:
-          target: wasm32-unknown-unknown
-      - name: install wasm-pack
-        uses: taiki-e/install-action@v2
-        with:
-          tool: wasm-pack
-      - name: build wasm
-        uses: ./.github/actions/make/web/wasm
-        with:
-          gh-token: ${{ secrets.GITHUB_TOKEN }}
-
-  bindings-ts:
-    needs: build-wasm
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      - name: install wasm-pack
-        uses: taiki-e/install-action@v2
-        with:
-          tool: wasm-pack
-      - name: build ts
-        uses: ./.github/actions/make/web/ts
-        with:
-          gh-token: ${{ secrets.GITHUB_TOKEN }}
-
-  test-ts:
-    needs: bindings-ts
-    uses: ./.github/workflows/test-ts.yml
-
-  docs-ts:
-    needs: bindings-ts
-    uses: ./.github/workflows/docs-ts.yml
-
-  #################
-  # Rust
-
-  docs-rust:
-    runs-on: ubuntu-latest
-    env:
-      RUSTDOCFLAGS: "-D warnings"
-
-    steps:
-      - name: checkout repository
-        uses: actions/checkout@v5
-
-      - uses: ./.github/actions/setup-and-cache-rust
-        with:
-          rustflags: "-D warnings -W unreachable-pub"
-      - run: cargo doc --all --no-deps --locked
-
-      - uses: actions/upload-artifact@v4.6.2
-        with:
-          name: rust
-          path: target/doc
-          retention-days: 1
-          overwrite: true
-          include-hidden-files: true
-          if-no-files-found: error
-
-  #################
-  # Cross-platform jobs
-
-  e2e-interop-test:
-    needs:
-      - build-ios
-      - bindings-swift
-      - bindings-ts
-    uses: ./.github/workflows/interop.yml
-
-  deploy-docs:
-    needs:
-      - docs-rust
-      - docs-ts
-      - docs-jvm
-      - docs-swift
-    uses: ./.github/workflows/deploy-docs.yml
-
-  #################
   # Publish
 
   prepare-publish:
-    needs:
-      - package-ios
-      - package-android
-      - bindings-ts
-      - build-jvm-linux
-      - build-jvm-darwin
-      - bindings-jvm
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
     steps:
@@ -264,32 +31,12 @@ jobs:
       - name: ensure the tag is signed
         run: git cat-file tag ${{ github.ref_name }} | grep -q -- '-----BEGIN PGP SIGNATURE-----'
 
-  publish-jvm:
+  publish-kmp:
     needs: prepare-publish
-    uses: ./.github/workflows/publish-jvm.yml
+    uses: ./.github/workflows/publish-kmp.yml
     secrets:
       SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
       SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
       PGP_KEY_ID: ${{ secrets.PGP_KEY_ID }}
       PGP_SIGNING_KEY: ${{ secrets.PGP_SIGNING_KEY }}
       PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
-
-  publish-android:
-    needs: prepare-publish
-    uses: ./.github/workflows/publish-android.yml
-    secrets:
-      SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
-      SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-      PGP_KEY_ID: ${{ secrets.PGP_KEY_ID }}
-      PGP_SIGNING_KEY: ${{ secrets.PGP_SIGNING_KEY }}
-      PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
-
-  publish-ios:
-    needs: prepare-publish
-    uses: ./.github/workflows/publish-swift.yml
-
-  publish-web:
-    needs: prepare-publish
-    uses: ./.github/workflows/publish-wasm.yml
-    permissions:
-      id-token: write
