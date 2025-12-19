@@ -17,8 +17,8 @@ env:
 
 jobs:
   build-ios:
-    if: github.repository == 'wireapp/core-crypto'
-    runs-on: self-hosted
+    if: github.repository == 'MohamadJaara/core-crypto'
+    runs-on: macos-latest
     strategy:
       matrix:
         include:

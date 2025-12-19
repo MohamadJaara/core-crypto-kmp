@@ -11,8 +11,8 @@ env:
 
 jobs:
   publish-swift:
-    if: github.repository == 'wireapp/core-crypto'
-    runs-on: self-hosted
+    if: github.repository == 'MohamadJaara/core-crypto'
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
 

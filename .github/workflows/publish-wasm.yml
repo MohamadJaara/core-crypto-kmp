@@ -11,7 +11,7 @@ env:
 
 jobs:
   publish-wasm:
-    if: github.repository == 'wireapp/core-crypto'
+    if: github.repository == 'MohamadJaara/core-crypto'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

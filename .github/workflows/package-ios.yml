@@ -14,8 +14,8 @@ env:
 
 jobs:
   package-ios:
-    if: github.repository == 'wireapp/core-crypto' && (github.event_name == 'pull_request' || github.ref_type == 'tag')
-    runs-on: self-hosted
+    if: github.repository == 'MohamadJaara/core-crypto' && (github.event_name == 'pull_request' || github.ref_type == 'tag')
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
 

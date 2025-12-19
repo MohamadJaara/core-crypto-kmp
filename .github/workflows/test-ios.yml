@@ -14,8 +14,8 @@ env:
 
 jobs:
   test-ios:
-    if: github.repository == 'wireapp/core-crypto' && github.event_name == 'pull_request'
-    runs-on: self-hosted
+    if: github.repository == 'MohamadJaara/core-crypto' && github.event_name == 'pull_request'
+    runs-on: macos-latest
     steps:
       - name: Cleanup on post
         uses: gacts/run-and-post-run@v1

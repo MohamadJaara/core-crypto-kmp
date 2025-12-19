@@ -22,7 +22,7 @@ env:
 
 jobs:
   publish-jvm:
-    if: github.repository == 'wireapp/core-crypto'
+    if: github.repository == 'MohamadJaara/core-crypto'
     name: publish jvm package
     runs-on: ubuntu-latest
     steps:

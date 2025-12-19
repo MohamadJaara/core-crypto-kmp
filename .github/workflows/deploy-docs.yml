@@ -10,7 +10,7 @@ env:
 
 jobs:
   deploy-docs:
-    if: github.repository == 'wireapp/core-crypto' && (github.ref == 'refs/heads/main' || (github.ref_type == 'tag' && startsWith(github.ref_name, 'v')))
+    if: github.repository == 'MohamadJaara/core-crypto' && (github.ref == 'refs/heads/main' || (github.ref_type == 'tag' && startsWith(github.ref_name, 'v')))
     runs-on: ubuntu-latest
 
     env:
