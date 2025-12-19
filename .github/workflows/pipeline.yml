@@ -32,7 +32,7 @@ jobs:
         run: git fetch -f origin ${{ github.ref }}:${{ github.ref }}
 
       - name: ensure the tag is signed
-        run: git cat-file tag ${{ github.ref_name }} | grep -q -- '-----BEGIN PGP SIGNATURE-----'
+        run: git cat-file tag ${{ github.ref_name }} | grep -qE -- '-----BEGIN (PGP|SSH) SIGNATURE-----'
 
   publish-kmp:
     needs: prepare-publish
