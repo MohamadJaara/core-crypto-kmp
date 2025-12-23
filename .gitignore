@@ -213,3 +213,5 @@ dist
 
 # Make stampfile directory for timestamp comparisons
 .stamps
+/crypto-ffi/bindings/kmp/.kotlin/
+/crypto-ffi/bindings/build/

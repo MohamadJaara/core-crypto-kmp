@@ -1,3 +1,5 @@
+import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.KotlinMultiplatform
 import gobley.gradle.GobleyHost
 import gobley.gradle.cargo.dsl.*
 import gobley.gradle.rust.targets.RustPosixTarget
@@ -10,6 +12,7 @@ plugins {
     id("dev.gobley.uniffi") version "0.3.7"
     id("com.vanniktech.maven.publish.base") version "0.34.0"
     kotlin("plugin.atomicfu") version "2.0.21"
+    id("org.jetbrains.dokka") version "2.0.0"
 }
 
 group = findProperty("GROUP") as String? ?: "io.github.mohamadjaara"
@@ -184,6 +187,8 @@ mavenPublishing {
     publishToMavenCentral(automaticRelease = true)
     pomFromGradleProperties()
     signAllPublications()
+    // Configure KMP publishing with Dokka-generated javadocs
+    configure(KotlinMultiplatform(javadocJar = JavadocJar.Dokka("dokkaHtml")))
 }
 
 // Allows skipping signing jars published to 'MavenLocal' repository
