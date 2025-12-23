@@ -36,6 +36,7 @@ jobs:
 
   publish-kmp:
     needs: prepare-publish
+    environment: deploy
     uses: ./.github/workflows/publish-kmp.yml
     secrets:
       SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
