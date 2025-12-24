@@ -49,6 +49,17 @@ jobs:
       - name: install gnu sed (required for rust setup)
         run: brew install gnu-sed
 
+      # Download pre-built JVM native libraries for cross-platform support
+      # The macOS library will be built on this runner, but we need the Linux library
+      # from a previous Linux build
+      - name: download x86_64 linux jvm library
+        uses: ./.github/actions/make
+        with:
+          key: jvm-linux
+          make-rule: jvm-linux
+          target-path: target/x86_64-unknown-linux-gnu/release/libcore_crypto_ffi.so
+          gh-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: setup rust toolchain
         uses: ./.github/actions/setup-and-cache-rust
         with:
@@ -67,10 +78,21 @@ jobs:
           # macOS target (already available on macOS runner)
           rustup target add aarch64-apple-darwin
 
+      - name: build macOS JVM library
+        run: make jvm-darwin
+
+      - name: extract version from tag
+        id: version
+        run: |
+          # Extract version from tag (removes 'v' prefix if present)
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
+
       - name: publish package
         working-directory: crypto-ffi/bindings/kmp
         run: |
-          ./gradlew publishAllPublicationsToMavenCentralRepository --no-configuration-cache
+          ./gradlew publishAllPublicationsToMavenCentralRepository --no-configuration-cache -PVERSION_NAME=${{ steps.version.outputs.VERSION }}
         env:
           ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_USERNAME }}

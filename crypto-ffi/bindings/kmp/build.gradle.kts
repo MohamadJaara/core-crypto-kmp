@@ -166,6 +166,62 @@ cargo {
     }
 }
 
+// JVM Native Library Bundling
+//
+// The Gobley plugin's embedRustLibrary doesn't properly bundle native libraries
+// into the JVM JAR. We need to manually copy and include them as resources.
+
+val buildType = if (System.getenv("RELEASE") == "1") "release" else "debug"
+
+// Directory where we'll collect native libraries for JVM resources
+val jvmNativeLibsDir = layout.buildDirectory.dir("jvmNativeLibs/$buildType")
+
+// Task to copy native libraries for JVM target
+val copyJvmNativeLibraries by tasks.registering {
+    description = "Copies native libraries into JVM resources directory"
+    group = "build"
+
+    // Declare outputs for up-to-date checking
+    outputs.dir(jvmNativeLibsDir)
+
+    doLast {
+        val libs = listOf(
+            Triple("x86_64-unknown-linux-gnu", "linux-x86-64", "so"),
+            Triple("aarch64-apple-darwin", "darwin-aarch64", "dylib")
+        )
+        libs.forEach { (rustTarget, jvmTarget, ext) ->
+            val libName = "libcore_crypto_ffi.$ext"
+            val src = projectDir.resolve("../../../target/$rustTarget/$buildType/$libName")
+            val destDir = jvmNativeLibsDir.get().asFile.resolve(jvmTarget)
+            val dest = destDir.resolve(libName)
+            // Copy if exists locally, or fail on CI if missing
+            if (src.exists()) {
+                destDir.mkdirs()
+                src.copyTo(dest, overwrite = true)
+                logger.lifecycle("Copied native library: $src -> $dest")
+            } else if (System.getenv("CI") != null) {
+                throw GradleException("Native library not found on CI: $src")
+            } else {
+                logger.warn("Native library not found (skipping): $src")
+            }
+        }
+    }
+}
+
+// Wire up the copy task to run before JVM resource processing
+tasks.matching { it.name == "jvmProcessResources" }.configureEach {
+    dependsOn(copyJvmNativeLibraries)
+}
+
+// Add native libraries directory to JVM resources
+kotlin {
+    sourceSets {
+        val jvmMain by getting {
+            resources.srcDir(jvmNativeLibsDir)
+        }
+    }
+}
+
 // Configure iOS build tasks with the required environment
 afterEvaluate {
     tasks.matching { it.name.contains("cargoBuildIos") }.configureEach {
