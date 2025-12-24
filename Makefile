@@ -35,9 +35,11 @@ UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
   PLATFORM_DIR       := linux-x86_64
   LIBRARY_EXTENSION  := so
+  SHA256SUM          := sha256sum
 else ifeq ($(UNAME_S),Darwin)
   PLATFORM_DIR       := darwin-x86_64
   LIBRARY_EXTENSION  := dylib
+  SHA256SUM          := shasum -a 256
 else
   $(error Unsupported host platform $(UNAME_S))
 endif
@@ -80,7 +82,7 @@ RUST_SOURCES := $(WORKSPACE_CARGO_FILES) $(CRATE_MANIFESTS) $(RUST_RS_FILES)
 	  echo "ERROR: The \"$*-deps\" variable doesn't exist in the Makefile."; exit 1; \
 	fi
 	@set -euo pipefail; \
-	hash=$$(sha256sum $($*-deps) | sha256sum | awk '{print $$1}'); \
+	hash=$$($(SHA256SUM) $($*-deps) | $(SHA256SUM) | awk '{print $$1}'); \
 	echo "$$hash"
 
 #-------------------------------------------------------------------------------

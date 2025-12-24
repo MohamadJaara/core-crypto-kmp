@@ -34,8 +34,27 @@ jobs:
       - name: ensure the tag is signed
         run: git cat-file tag ${{ github.ref_name }} | grep -qE -- '-----BEGIN (PGP|SSH) SIGNATURE-----'
 
-  publish-kmp:
+  # Build the Linux JVM library on a Linux runner before KMP publish
+  # This artifact is needed by the KMP publish job running on macOS
+  build-jvm-linux:
     needs: prepare-publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: setup rust toolchain
+        uses: ./.github/actions/setup-and-cache-rust
+        with:
+          cache-key-prefix: jvm-linux
+          rustflags: ""
+
+      - name: build jvm linux library
+        uses: ./.github/actions/make/jvm
+        with:
+          gh-token: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-kmp:
+    needs: [prepare-publish, build-jvm-linux]
     uses: ./.github/workflows/publish-kmp.yml
     secrets:
       SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
