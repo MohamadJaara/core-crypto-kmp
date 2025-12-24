@@ -50,6 +50,11 @@ kotlin {
         browser()
     }
 
+    // JS target (stubs only for now)
+    js {
+        browser()
+    }
+
     sourceSets {
         val commonMain by getting {
             kotlin.srcDir(projectDir.resolve("../shared/kotlin"))
