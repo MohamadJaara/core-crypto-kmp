@@ -4,6 +4,16 @@
 
 ### Features
 
+- added `Database.open(location: String, key: DatabaseKey)` as static methods to construct a persistent database
+  instance and `Database.open(key: DatabaseKey)` to construct an in-memory database instance.
+
+  Removed default Constructor from swift to align with other language bindings.
+
+  Affected platforms: android, ios
+
+- added `Database.getLocation()` to allow getting the location of a persistent database instance. Returns null if the
+  database is in-memory.
+
 - removed `CoreCrypto.provideTransport()`, added `transport` parameter to `CoreCryptoContext.mlsInit()`
 
   Instead of providing transport separately from session initialization it is now provided when initializing the MLS
