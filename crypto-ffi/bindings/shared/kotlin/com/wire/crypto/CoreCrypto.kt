@@ -8,13 +8,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Wrap a `CoreCrypto` instance in a `CoreCryptoClient` instance. Should largely be invisible to end-users. */
-public fun CoreCrypto.lift(): CoreCryptoClient = CoreCryptoClient(this)
+public fun CoreCrypto.lift() = CoreCryptoClient(this)
 
 /** Opens an existing core crypto client or creates a new one if one doesn't exist at the `keystore` path */
 public suspend operator fun CoreCrypto.Companion.invoke(
     keystore: String,
     databaseKey: DatabaseKey
-): CoreCryptoClient = coreCryptoDeferredInit(keystore, databaseKey, null).lift()
+) = coreCryptoDeferredInit(keystore, databaseKey, null).lift()
 
 /**
  * Instantiate a history client.
@@ -31,7 +31,7 @@ public suspend fun historyClient(historySecret: HistorySecret): CoreCryptoClient
  * This wrapper should be largely transparent to end users. It exists to improve the
  * callback interfaces: `.transaction(...)`, `.registerFooObserver(...)`, etc.
  */
-public class CoreCryptoClient(private val cc: CoreCrypto) {
+public class CoreCryptoClient(private val cc: CoreCrypto) : CoreCryptoInterface by cc {
     public companion object
 
     /**
@@ -47,43 +47,33 @@ public class CoreCryptoClient(private val cc: CoreCrypto) {
      *
      * @return the return of the function passed as parameter
      */
-    @Suppress("UNCHECKED_CAST")
-    public suspend fun <R> transaction(block: suspend (context: CoreCryptoContext) -> R): R =
-        withContext(NonCancellable) {
-            var result: R? = null
-            var error: Throwable? = null
-            try {
-                this@CoreCryptoClient.cc.transaction(object : CoreCryptoCommand {
-                    override suspend fun execute(context: CoreCryptoContext) {
-                        try {
-                            result = block(context)
-                        } catch (e: Throwable) {
-                            // We want to catch the error before it gets wrapped by core crypto.
-                            error = e
-                            // This is to tell core crypto that there was an error inside the transaction.
-                            throw e
-                        }
+    @Suppress("unchecked_cast")
+    public suspend fun <R> transaction(block: suspend (context: CoreCryptoContext) -> R): R = withContext(NonCancellable) {
+        var result: R? = null
+        var error: Throwable? = null
+        try {
+            this@CoreCryptoClient.cc.transaction(object : CoreCryptoCommand {
+                override suspend fun execute(context: CoreCryptoContext) {
+                    try {
+                        result = block(context)
+                    } catch (e: Throwable) {
+                        // We want to catch the error before it gets wrapped by core crypto.
+                        error = e
+                        // This is to tell core crypto that there was an error inside the transaction.
+                        throw e
                     }
-                })
-            } catch (e: Throwable) {
-                // We prefer the closure error if it's available since the transaction won't include it
-                error = error ?: e
-            }
-            if (error != null) {
-                throw error as Throwable
-            }
-
-            // Since we know that the transaction will either succeed or throw it's safe to do an unchecked cast here
-            return@withContext result as R
+                }
+            })
+        } catch (e: Throwable) {
+            // We prefer the closure error if it's available since the transaction won't include it
+            error = error ?: e
+        }
+        if (error != null) {
+            throw error as Throwable
         }
 
-    /**
-     * Provide an implementation of the MlsTransport interface.
-     * See [MlsTransport].
-     * @param transport the transport to be used
-     */
-    public suspend fun provideTransport(transport: MlsTransport) {
-        cc.provideTransport(transport)
+        // Since we know that the transaction will either succeed or throw it's safe to do an unchecked cast here
+        return@withContext result as R
     }
 
     /**
@@ -120,14 +110,6 @@ public class CoreCryptoClient(private val cc: CoreCrypto) {
         }
         return cc.registerHistoryObserver(observerIndirector)
     }
-
-    /**
-     * See [CoreCryptoContext.isHistorySharingEnabled]
-     *
-     * @param id conversation identifier
-     * @return true if history sharing is enabled
-     */
-    public suspend fun isHistorySharingEnabled(id: ConversationId): Boolean = cc.isHistorySharingEnabled(id)
 
     /**
      * Closes this [CoreCrypto] instance and deallocates all loaded resources.
