@@ -16,7 +16,7 @@ plugins {
 }
 
 group = findProperty("GROUP") as String? ?: "io.github.mohamadjaara"
-version = findProperty("VERSION_NAME") as String? ?: "9.1.1"
+version = findProperty("VERSION_NAME") as String? ?: "9.3.0.1-kmp"
 
 kotlin {
     // Explicit API mode for better library quality
