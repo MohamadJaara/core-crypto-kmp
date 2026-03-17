@@ -82,6 +82,12 @@ kotlin {
             }
         }
 
+        val jsMain by getting {
+            dependencies {
+                implementation(npm("@wireapp/core-crypto", "9.3.0"))
+            }
+        }
+
         val androidMain by getting {
             dependencies {
                 implementation("${libs.jna.get()}@aar")
@@ -130,6 +136,48 @@ kotlin {
             dependsOn(nativeTest)
         }
     }
+}
+
+val uniffiStubFile = layout.buildDirectory.file(
+    "generated/uniffi/stubMain/kotlin/com/wire/crypto/core_crypto_ffi.stub.kt"
+)
+val webTemplateFile = layout.projectDirectory.file("web-template/com/wire/crypto/core_crypto_ffi.web.kt")
+
+val patchUniffiWebStubs by tasks.registering {
+    description = "Replaces generated JS/WASM UniFFI stubs with the npm-backed web implementation."
+    group = "build"
+    dependsOn("buildUniffiBindings")
+    inputs.file(webTemplateFile)
+    outputs.file(uniffiStubFile)
+
+    doLast {
+        val file = uniffiStubFile.get().asFile
+        val template = webTemplateFile.asFile
+        if (!file.exists()) {
+            logger.warn("UniFFI web stub file not found, skipping patch: ${file.absolutePath}")
+            return@doLast
+        }
+        if (!template.exists()) {
+            throw GradleException("Web implementation template not found: ${template.absolutePath}")
+        }
+        file.writeText(template.readText())
+        logger.lifecycle("Patched UniFFI web stubs with npm-backed implementation.")
+    }
+}
+
+tasks.matching {
+    it.name in setOf(
+        "compileKotlinJs",
+        "compileTestKotlinJs",
+        "jsJar",
+        "jsSourcesJar",
+    )
+}.configureEach {
+    dependsOn(patchUniffiWebStubs)
+}
+
+tasks.matching { it.name.contains("dokka", ignoreCase = true) }.configureEach {
+    dependsOn(patchUniffiWebStubs)
 }
 
 android {

@@ -412,9 +412,9 @@ jvm-test: $(JVM_LIB) bindings-kotlin-jvm ## Run Kotlin tests on JVM
 # - Package everything into a multiplatform library
 
 .PHONY: kmp
-kmp: ## Build KMP library for host platform (Android, JVM, macOS ARM64; iOS on macOS)
+kmp: ## Build KMP library for host platform (Android, JVM, macOS ARM64; iOS on macOS) + JS artifacts
 	cd crypto-ffi/bindings/kmp && \
-	./gradlew assembleRelease jvmJar macosArm64MainKlibrary iosArm64MainKlibrary
+	./gradlew assembleRelease jvmJar macosArm64MainKlibrary iosArm64MainKlibrary jsJar
 
 .PHONY: kmp-android
 kmp-android: | android-env ## Build KMP library for Android only
@@ -435,6 +435,11 @@ kmp-ios: ## Build KMP library for iOS ARM64 (macOS only)
 kmp-macos: ## Build KMP library for macOS ARM64 (macOS only)
 	cd crypto-ffi/bindings/kmp && \
 	./gradlew linkReleaseFrameworkMacosArm64
+
+.PHONY: kmp-js
+kmp-js: ## Build KMP library for Kotlin/JS
+	cd crypto-ffi/bindings/kmp && \
+	./gradlew jsJar
 
 .PHONY: kmp-test
 kmp-test: ## Run KMP tests
