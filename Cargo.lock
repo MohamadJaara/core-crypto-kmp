@@ -774,7 +774,7 @@ dependencies = [
 
 [[package]]
 name = "core-crypto"
-version = "9.3.0"
+version = "9.3.2"
 dependencies = [
  "anyhow",
  "async-fs",
@@ -836,7 +836,7 @@ dependencies = [
 
 [[package]]
 name = "core-crypto-ffi"
-version = "9.3.0"
+version = "9.3.2"
 dependencies = [
  "async-channel",
  "async-lock",
@@ -860,6 +860,7 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
+ "serde_repr",
  "sha2",
  "smol-macros",
  "strum",
@@ -875,7 +876,7 @@ dependencies = [
 
 [[package]]
 name = "core-crypto-keystore"
-version = "9.3.0"
+version = "9.3.2"
 dependencies = [
  "aes-gcm",
  "async-fs",
@@ -931,7 +932,7 @@ dependencies = [
 
 [[package]]
 name = "core-crypto-macros"
-version = "9.3.0"
+version = "9.3.2"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -2281,7 +2282,7 @@ dependencies = [
 
 [[package]]
 name = "interop"
-version = "9.3.0"
+version = "9.3.2"
 dependencies = [
  "anyhow",
  "async-fs",
@@ -2454,7 +2455,7 @@ dependencies = [
 
 [[package]]
 name = "keystore-dump"
-version = "9.3.0"
+version = "9.3.2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2682,7 +2683,7 @@ dependencies = [
 
 [[package]]
 name = "mls-crypto-provider"
-version = "9.3.0"
+version = "9.3.2"
 dependencies = [
  "aes-gcm",
  "async-lock",
@@ -4095,6 +4096,17 @@ dependencies = [
  "ryu",
  "serde",
  "serde_core",
+]
+
+[[package]]
+name = "serde_repr"
+version = "0.1.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "175ee3e80ae9982737ca543e96133087cbd9a485eecc3bc4de9c1a37b47ea59c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
 ]
 
 [[package]]

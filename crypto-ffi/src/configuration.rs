@@ -10,7 +10,11 @@ use crate::{Ciphersuite, core_crypto_context::mls::ExternalSenderKeyMaybeArc};
 
 /// See [core_crypto::prelude::MlsWirePolicy]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(target_family = "wasm", wasm_bindgen, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    target_family = "wasm",
+    wasm_bindgen,
+    derive(serde_repr::Serialize_repr, serde_repr::Deserialize_repr)
+)]
 #[cfg_attr(not(target_family = "wasm"), derive(uniffi::Enum))]
 #[repr(u8)]
 pub enum WirePolicy {
@@ -42,6 +46,7 @@ impl From<WirePolicy> for core_crypto::prelude::MlsWirePolicy {
 /// see [core_crypto::prelude::MlsCustomConfiguration]
 #[derive(Debug, Default, Clone, Copy)]
 #[cfg_attr(target_family = "wasm", wasm_bindgen, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(target_family = "wasm", serde(rename_all = "camelCase"))]
 #[cfg_attr(not(target_family = "wasm"), derive(uniffi::Record))]
 pub struct CustomConfiguration {
     ///  Duration in seconds after which we will automatically force a self-update commit
@@ -104,6 +109,7 @@ impl CustomConfiguration {
     wasm_bindgen(getter_with_clone),
     derive(serde::Serialize, serde::Deserialize)
 )]
+#[cfg_attr(target_family = "wasm", serde(rename_all = "camelCase"))]
 #[cfg_attr(not(target_family = "wasm"), derive(uniffi::Record))]
 pub struct ConversationConfiguration {
     /// The ciphersuite used in the group

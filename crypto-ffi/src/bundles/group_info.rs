@@ -5,7 +5,11 @@ use wasm_bindgen::prelude::*;
 use crate::core_crypto_context::mls::{GroupInfoMaybeArc, group_info_coerce_maybe_arc};
 
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(target_family = "wasm", wasm_bindgen, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    target_family = "wasm",
+    wasm_bindgen,
+    derive(serde_repr::Serialize_repr, serde_repr::Deserialize_repr)
+)]
 #[cfg_attr(not(target_family = "wasm"), derive(uniffi::Enum))]
 #[repr(u8)]
 pub enum MlsGroupInfoEncryptionType {
@@ -34,7 +38,11 @@ impl From<MlsGroupInfoEncryptionType> for core_crypto::prelude::MlsGroupInfoEncr
 }
 
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(target_family = "wasm", wasm_bindgen, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    target_family = "wasm",
+    wasm_bindgen,
+    derive(serde_repr::Serialize_repr, serde_repr::Deserialize_repr)
+)]
 #[cfg_attr(not(target_family = "wasm"), derive(uniffi::Enum))]
 #[repr(u8)]
 pub enum MlsRatchetTreeType {
@@ -73,6 +81,7 @@ impl From<MlsRatchetTreeType> for core_crypto::prelude::MlsRatchetTreeType {
     wasm_bindgen(getter_with_clone),
     derive(serde::Serialize, serde::Deserialize)
 )]
+#[cfg_attr(target_family = "wasm", serde(rename_all = "camelCase"))]
 #[cfg_attr(not(target_family = "wasm"), derive(uniffi::Record))]
 pub struct GroupInfoBundle {
     /// How the group info is encrypetd
