@@ -84,7 +84,7 @@ kotlin {
 
         val jsMain by getting {
             dependencies {
-                implementation(npm("@wireapp/core-crypto", "9.3.0"))
+                implementation(npm("@wireapp/core-crypto", "9.3.2"))
             }
         }
 
