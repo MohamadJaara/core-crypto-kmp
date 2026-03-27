@@ -82,6 +82,11 @@ kotlin {
             }
         }
 
+        val jsMain by getting {
+            dependencies {
+                implementation(npm("@wireapp/core-crypto", "9.3.2"))
+            }
+        }
         val androidMain by getting {
             dependencies {
                 implementation("${libs.jna.get()}@aar")
