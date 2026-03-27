@@ -476,6 +476,7 @@ private fun Uint8Array.toByteArray(): ByteArray = ByteArray(length) { (this.asDy
 private fun dynamicToULong(value: dynamic): ULong = value?.toString()?.toULong() ?: 0u
 private fun dynamicToTimestamp(value: dynamic): Instant = Instant.fromEpochSeconds(value.toString().toLong())
 private val jsCoreCryptoExport: dynamic get() = JsCoreCryptoModule.asDynamic().CoreCrypto
+private val jsCoreCryptoContextExport: dynamic get() = JsCoreCryptoModule.asDynamic().CoreCryptoContext
 private fun constructJsBytesType(typeName: String, bytes: ByteArray): dynamic {
     val ctor = JsCoreCryptoModule.asDynamic()[typeName]
     return js("Reflect.construct")(ctor, arrayOf(bytes.toUint8Array()))
@@ -490,6 +491,12 @@ private fun jsCoreCryptoProteusLastResortPrekeyId(): Int =
     jsCoreCryptoExport.proteusLastResortPrekeyId().unsafeCast<Int>()
 private fun jsCoreCryptoProteusFingerprintPrekeybundle(prekey: Uint8Array): String =
     jsCoreCryptoExport.proteusFingerprintPrekeybundle(prekey).unsafeCast<String>()
+private fun jsCoreCryptoContextProteusLastResortPrekeyId(): Int =
+    jsCoreCryptoContextExport.proteusLastResortPrekeyId().unsafeCast<Int>()
+private fun jsCoreCryptoContextProteusFingerprintPrekeybundle(prekey: Uint8Array): String =
+    jsCoreCryptoContextExport.proteusFingerprintPrekeybundle(prekey).unsafeCast<String>()
+private fun jsCoreCryptoContextFromRaw(rawContext: dynamic): JsCoreCryptoContext =
+    jsCoreCryptoContextExport.fromFfiContext(rawContext).unsafeCast<JsCoreCryptoContext>()
 private fun newJsClientId(bytes: ByteArray): JsClientId = constructJsBytesType("ClientId", bytes).unsafeCast<JsClientId>()
 private fun newJsConversationId(bytes: ByteArray): JsConversationId = constructJsBytesType("ConversationId", bytes).unsafeCast<JsConversationId>()
 private fun newJsDatabaseKey(bytes: ByteArray): JsDatabaseKey = constructJsBytesType("DatabaseKey", bytes).unsafeCast<JsDatabaseKey>()
@@ -549,7 +556,7 @@ private fun mapX509Identity(identity: JsX509Identity): X509Identity = X509Identi
 private fun mapBufferedDecryptedMessage(message: JsBufferedDecryptedMessage): BufferedDecryptedMessage = BufferedDecryptedMessage(
     message = message.message?.toByteArray(),
     isActive = message.isActive,
-    commitDelay = message.commitDelay?.let(::dynamicToULong),
+    commitDelay = if (message.commitDelay == null) null else dynamicToULong(message.commitDelay),
     senderClientId = message.senderClientId?.let(::ClientId),
     hasEpochChanged = message.hasEpochChanged,
     identity = mapWireIdentity(message.identity),
@@ -559,7 +566,7 @@ private fun mapBufferedDecryptedMessage(message: JsBufferedDecryptedMessage): Bu
 private fun mapDecryptedMessage(message: JsDecryptedMessage): DecryptedMessage = DecryptedMessage(
     message = message.message?.toByteArray(),
     isActive = message.isActive,
-    commitDelay = message.commitDelay?.let(::dynamicToULong),
+    commitDelay = if (message.commitDelay == null) null else dynamicToULong(message.commitDelay),
     senderClientId = message.senderClientId?.let(::ClientId),
     hasEpochChanged = message.hasEpochChanged,
     identity = mapWireIdentity(message.identity),
@@ -632,6 +639,86 @@ private fun mapTransportResponse(response: dynamic): MlsTransportResponse = when
     response == "retry" -> MlsTransportResponse.Retry
     response.abort != undefined && response.abort != null -> MlsTransportResponse.Abort(response.abort.reason as String)
     else -> CoreCryptoException.Other("Unknown MLS transport response: ${response.toString()}").let { throw it }
+}
+
+private fun dynamicBytesToByteArray(value: dynamic): ByteArray {
+    if (value == null) {
+        return byteArrayOf()
+    }
+    return when {
+        value.buffer != undefined && value.length != undefined -> (value as Uint8Array).toByteArray()
+        value.length != undefined -> {
+            val array = value.unsafeCast<Array<dynamic>>()
+            ByteArray(array.size) { index -> (array[index] as Number).toByte() }
+        }
+        else -> throw CoreCryptoException.Other("Unsupported byte container returned from JS Proteus runtime")
+    }
+}
+
+private fun mapProteusEncryptBatchedResult(jsValue: dynamic): Map<String, ByteArray> {
+    if (jsValue == null) {
+        return emptyMap()
+    }
+
+    val arrayFrom = js("Array.from")
+    val objectKeys = js("Object.keys")
+    val mapKeys = jsValue.keys
+    val mapGet = jsValue.get
+
+    return when {
+        mapKeys != undefined && mapGet != undefined -> {
+            val keys = arrayFrom(mapKeys.call(jsValue)).unsafeCast<Array<String>>()
+            keys.associateWith { key -> dynamicBytesToByteArray(mapGet.call(jsValue, key)) }
+        }
+
+        js("Array.isArray")(jsValue).unsafeCast<Boolean>() -> {
+            val entries = jsValue.unsafeCast<Array<Array<dynamic>>>()
+            entries.associate { entry ->
+                val key = entry[0] as String
+                key to dynamicBytesToByteArray(entry[1])
+            }
+        }
+
+        else -> {
+            val keys = objectKeys(jsValue).unsafeCast<Array<String>>()
+            keys.associateWith { key -> dynamicBytesToByteArray(jsValue[key]) }
+        }
+    }
+}
+
+private fun jsProteusDecryptSafeOrFallback(context: JsCoreCryptoContext, sessionId: String, ciphertext: Uint8Array): Promise<Uint8Array> {
+    val jsContext = context.asDynamic()
+    val decryptSafe = jsContext.proteusDecryptSafe
+    return if (decryptSafe == undefined || decryptSafe == null) {
+        jsContext.proteusDecrypt(sessionId, ciphertext).unsafeCast<Promise<Uint8Array>>()
+    } else {
+        decryptSafe.call(jsContext, sessionId, ciphertext).unsafeCast<Promise<Uint8Array>>()
+    }
+}
+
+private fun patchJsCoreCryptoContext(rawContext: dynamic): JsCoreCryptoContext {
+    val context = jsCoreCryptoContextFromRaw(rawContext)
+    val dynamicContext = context.asDynamic()
+
+    if (dynamicContext.proteusDecryptSafe == undefined || dynamicContext.proteusDecryptSafe == null) {
+        dynamicContext.proteusDecryptSafe = { sessionId: String, ciphertext: Uint8Array ->
+            rawContext.proteus_decrypt_safe(sessionId, ciphertext)
+        }
+    }
+
+    return context
+}
+
+private fun jsCoreCryptoTransaction(coreCrypto: JsCoreCrypto, command: CoreCryptoCommand): Promise<Any?> {
+    val rawCoreCrypto = coreCrypto.inner().asDynamic()
+    val jsCommand = js("({})")
+    jsCommand.execute = { rawContext: dynamic ->
+        GlobalScope.promise<Any?> {
+            command.execute(CoreCryptoContext(patchJsCoreCryptoContext(rawContext)))
+            null
+        }
+    }
+    return rawCoreCrypto.transaction(jsCommand).unsafeCast<Promise<Any?>>()
 }
 
 private fun mlsTransportToJs(transport: MlsTransport): JsMlsTransport {
@@ -959,6 +1046,7 @@ public actual open class E2eiEnrollment : Disposable, E2eiEnrollmentInterface {
 
 public actual open class CoreCrypto : Disposable, CoreCryptoInterface {
     internal val js: JsCoreCrypto?
+    private var destroyed = false
 
     public actual constructor(noPointer: NoPointer) {
         js = null
@@ -968,12 +1056,29 @@ public actual open class CoreCrypto : Disposable, CoreCryptoInterface {
         js = coreCrypto
     }
 
-    private fun requireJs(): JsCoreCrypto = js ?: throw CoreCryptoException.Other("CoreCrypto is not initialized")
+    private fun requireJs(): JsCoreCrypto {
+        val instance = js ?: throw CoreCryptoException.Other("CoreCrypto is not initialized")
+        if (destroyed) {
+            throw IllegalStateException("CoreCrypto client is destroyed")
+        }
+        return instance
+    }
 
-    actual override fun destroy(): Unit = Unit
+    actual override fun destroy(): Unit = close()
     actual override fun close(): Unit {
-        js ?: return
-        GlobalScope.promise { webCall { requireJs().close() } }
+        val instance = js ?: return
+        if (destroyed) {
+            return
+        }
+        destroyed = true
+        GlobalScope.promise {
+            try {
+                ensureWasmInitialized()
+                instance.close().await()
+            } catch (_: Throwable) {
+                Unit
+            }
+        }
     }
 
     public actual override suspend fun clientPublicKey(ciphersuite: Ciphersuite, credentialType: CredentialType): ByteArray = webCall {
@@ -1038,12 +1143,7 @@ public actual open class CoreCrypto : Disposable, CoreCryptoInterface {
     public actual override suspend fun reseedRng(seed: ByteArray) { webCall { requireJs().reseedRng(seed.toUint8Array()) } }
     public actual override suspend fun transaction(command: CoreCryptoCommand) {
         webCall {
-            requireJs().transaction { context ->
-                GlobalScope.promise {
-                    command.execute(CoreCryptoContext(context))
-                    null
-                }
-            }
+            jsCoreCryptoTransaction(requireJs(), command)
         }
     }
 
@@ -1085,7 +1185,9 @@ public actual open class CoreCryptoContext : Disposable, CoreCryptoContextInterf
     public actual override suspend fun decryptMessage(conversationId: ConversationId, payload: ByteArray): DecryptedMessage = mapDecryptedMessage(webCall { requireJs().decryptMessage(conversationId.requireJs(), payload.toUint8Array()) })
     public actual override suspend fun deleteStaleKeyPackages(ciphersuite: Ciphersuite) { webCall { requireJs().deleteStaleKeyPackages(ciphersuiteToJs(ciphersuite)) } }
     public actual override suspend fun disableHistorySharing(conversationId: ConversationId) { webCall { requireJs().disableHistorySharing(conversationId.requireJs()) } }
-    public actual override suspend fun e2eiConversationState(conversationId: ConversationId): E2eiConversationState = e2eiConversationStateFromJs(webCall { requireJs().e2eiConversationState(conversationId.requireJs()) }.toInt())
+    public actual override suspend fun e2eiConversationState(conversationId: ConversationId): E2eiConversationState = e2eiConversationStateFromJs(
+        webCall { requireJs().e2eiConversationState(conversationId.requireJs()) }.toInt()
+    )
     public actual override suspend fun e2eiEnrollmentStash(enrollment: E2eiEnrollment): ByteArray = webCall { requireJs().e2eiEnrollmentStash(enrollment.js ?: throw CoreCryptoException.Other("E2eiEnrollment is not initialized")) }.toByteArray()
     public actual override suspend fun e2eiEnrollmentStashPop(handle: ByteArray): E2eiEnrollment = E2eiEnrollment(webCall { requireJs().e2eiEnrollmentStashPop(handle.toUint8Array()) })
     public actual override suspend fun e2eiIsEnabled(ciphersuite: Ciphersuite): Boolean = webCall { requireJs().e2eiIsEnabled(ciphersuiteToJs(ciphersuite)) }
@@ -1111,18 +1213,17 @@ public actual open class CoreCryptoContext : Disposable, CoreCryptoContextInterf
     public actual override suspend fun mlsInit(clientId: ClientId, ciphersuites: List<Ciphersuite>, nbKeyPackage: UInt?) { webCall { requireJs().mlsInit(clientId.requireJs(), ciphersuites.map(::ciphersuiteToJs).toTypedArray(), nbKeyPackage?.toInt()) } }
     public actual override suspend fun processWelcomeMessage(welcomeMessage: Welcome, customConfiguration: CustomConfiguration): WelcomeBundle = mapWelcomeBundle(webCall { requireJs().processWelcomeMessage(welcomeMessage.requireJs(), customConfigurationToJs(customConfiguration)) })
     public actual override suspend fun proteusDecrypt(sessionId: String, ciphertext: ByteArray): ByteArray = webCall { requireJs().proteusDecrypt(sessionId, ciphertext.toUint8Array()) }.toByteArray()
-    public actual override suspend fun proteusDecryptSafe(sessionId: String, ciphertext: ByteArray): ByteArray = webCall { requireJs().proteusDecryptSafe(sessionId, ciphertext.toUint8Array()) }.toByteArray()
+    public actual override suspend fun proteusDecryptSafe(sessionId: String, ciphertext: ByteArray): ByteArray = webCall {
+        jsProteusDecryptSafeOrFallback(requireJs(), sessionId, ciphertext.toUint8Array())
+    }.toByteArray()
     public actual override suspend fun proteusEncrypt(sessionId: String, plaintext: ByteArray): ByteArray = webCall { requireJs().proteusEncrypt(sessionId, plaintext.toUint8Array()) }.toByteArray()
-    public actual override suspend fun proteusEncryptBatched(sessions: List<String>, plaintext: ByteArray): Map<String, ByteArray> {
-        val jsMap = webCall { requireJs().proteusEncryptBatched(sessions.toTypedArray(), plaintext.toUint8Array()) }
-        val keys = js("Array.from(jsMap.keys())") as Array<String>
-        return keys.associateWith { key -> (jsMap.get(key) as Uint8Array).toByteArray() }
-    }
+    public actual override suspend fun proteusEncryptBatched(sessions: List<String>, plaintext: ByteArray): Map<String, ByteArray> =
+        mapProteusEncryptBatchedResult(webCall { requireJs().proteusEncryptBatched(sessions.toTypedArray(), plaintext.toUint8Array()) })
     public actual override suspend fun proteusFingerprint(): String = webCall { requireJs().proteusFingerprint() }
-    public actual override fun proteusFingerprintPrekeybundle(prekey: ByteArray): String = JsCoreCryptoContext.proteusFingerprintPrekeybundle(prekey.toUint8Array())
+    public actual override fun proteusFingerprintPrekeybundle(prekey: ByteArray): String = jsCoreCryptoContextProteusFingerprintPrekeybundle(prekey.toUint8Array())
     public actual override suspend fun proteusFingerprintLocal(sessionId: String): String = webCall { requireJs().proteusFingerprintLocal(sessionId) }
     public actual override suspend fun proteusFingerprintRemote(sessionId: String): String = webCall { requireJs().proteusFingerprintRemote(sessionId) }
-    public actual override fun proteusLastResortPrekeyId(): UShort = JsCoreCryptoContext.proteusLastResortPrekeyId().toUShort()
+    public actual override fun proteusLastResortPrekeyId(): UShort = jsCoreCryptoContextProteusLastResortPrekeyId().toUShort()
     public actual override suspend fun proteusInit() { webCall { requireJs().proteusInit() } }
     public actual override suspend fun proteusLastResortPrekey(): ByteArray = webCall { requireJs().proteusLastResortPrekey() }.toByteArray()
     public actual override suspend fun proteusNewPrekey(prekeyId: UShort): ByteArray = webCall { requireJs().proteusNewPrekey(prekeyId.toInt()) }.toByteArray()

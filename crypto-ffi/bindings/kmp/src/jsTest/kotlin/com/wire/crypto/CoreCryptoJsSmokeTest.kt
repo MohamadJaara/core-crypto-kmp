@@ -35,6 +35,9 @@ class CoreCryptoJsSmokeTest {
         ).lift()
     }
 
+    private suspend fun CoreCryptoContext.proteusNewPreKeys(from: Int, count: Int): List<ByteArray> =
+        from.until(from + count).map { proteusNewPrekey(it.toUShort()) }
+
     @Test
     fun versionAndBuildMetadataSmokeTest() = runTest {
         val coreCrypto = newCoreCrypto()
@@ -129,6 +132,36 @@ class CoreCryptoJsSmokeTest {
             }
         } finally {
             coreCrypto.close()
+        }
+    }
+
+    @Test
+    fun proteusEncryptBatchedIgnoresMissingSessionTest() = runTest {
+        val aliceClient = newCoreCryptoClient(clientName = "proteus-alice-${Random.nextInt()}")
+        val bobClient = newCoreCryptoClient(clientName = "proteus-bob-${Random.nextInt()}")
+        val aliceSessionId = "alice-session-${Random.nextInt()}"
+        val missingSessionId = "missing-session-${Random.nextInt()}"
+
+        try {
+            aliceClient.transaction { ctx -> ctx.proteusInit() }
+            bobClient.transaction { ctx -> ctx.proteusInit() }
+
+            val aliceKey = aliceClient.transaction { ctx -> ctx.proteusNewPreKeys(0, 1).first() }
+            bobClient.transaction { ctx -> ctx.proteusSessionFromPrekey(aliceSessionId, aliceKey) }
+
+            val encryptedMessages = bobClient.transaction { ctx ->
+                ctx.proteusEncryptBatched(
+                    listOf(aliceSessionId, missingSessionId),
+                    "Hi Alice!".encodeToByteArray(),
+                )
+            }
+
+            assertEquals(1, encryptedMessages.size, "missing Proteus sessions should be ignored")
+            assertTrue(encryptedMessages.containsKey(aliceSessionId), "existing session should be present in batch result")
+            assertFalse(encryptedMessages.containsKey(missingSessionId), "missing session should be omitted from batch result")
+        } finally {
+            aliceClient.close()
+            bobClient.close()
         }
     }
 }
