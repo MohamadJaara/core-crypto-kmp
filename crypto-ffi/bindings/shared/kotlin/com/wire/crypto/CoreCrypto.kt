@@ -8,13 +8,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Wrap a `CoreCrypto` instance in a `CoreCryptoClient` instance. Should largely be invisible to end-users. */
-public fun CoreCrypto.lift() = CoreCryptoClient(this)
+public fun CoreCrypto.lift(): CoreCryptoClient = CoreCryptoClient(this)
 
 /** Opens an existing core crypto client or creates a new one if one doesn't exist at the `keystore` path */
 public suspend operator fun CoreCrypto.Companion.invoke(
     keystore: String,
     databaseKey: DatabaseKey
-) = coreCryptoDeferredInit(keystore, databaseKey, null).lift()
+): CoreCryptoClient = coreCryptoDeferredInit(keystore, databaseKey, null).lift()
 
 /**
  * Instantiate a history client.
