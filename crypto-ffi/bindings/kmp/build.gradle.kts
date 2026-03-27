@@ -6,17 +6,17 @@ import gobley.gradle.rust.targets.RustPosixTarget
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    kotlin("multiplatform") version "2.0.21"
+    kotlin("multiplatform") version "2.3.0"
     id("com.android.library") version "8.2.2"
     id("dev.gobley.cargo") version "0.3.7"
     id("dev.gobley.uniffi") version "0.3.7"
     id("com.vanniktech.maven.publish.base") version "0.34.0"
-    kotlin("plugin.atomicfu") version "2.0.21"
+    kotlin("plugin.atomicfu") version "2.3.0"
     id("org.jetbrains.dokka") version "2.0.0"
 }
 
 group = findProperty("GROUP") as String? ?: "io.github.mohamadjaara"
-version = findProperty("VERSION_NAME") as String? ?: "9.3.2.1-kmp"
+version = findProperty("VERSION_NAME") as String? ?: "9.3.3.1-kmp"
 
 kotlin {
     // Explicit API mode for better library quality
@@ -44,13 +44,7 @@ kotlin {
     // macOS ARM64 target
     macosArm64()
 
-    // WASM JS target (stubs only for now)
-    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
-    wasmJs {
-        browser()
-    }
-
-    // JS target (stubs only for now)
+    // JS target
     js {
         browser()
     }
@@ -84,7 +78,7 @@ kotlin {
 
         val jsMain by getting {
             dependencies {
-                implementation(npm("@wireapp/core-crypto", "9.3.2"))
+                implementation(npm("@wireapp/core-crypto", "9.3.3"))
             }
         }
         val androidMain by getting {

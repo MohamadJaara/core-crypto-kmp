@@ -13,7 +13,7 @@ The existing public Kotlin API `com.wire.crypto.*` remains the consumer contract
 
 Supported on `js`:
 
-- Real implementation of `com.wire.crypto` backed by `@wireapp/core-crypto@9.3.2`
+- Real implementation of `com.wire.crypto` backed by `@wireapp/core-crypto@9.3.3`
 - Internal WASM bootstrap via `initWasmModule(...)`
 - Compile support for consumers using the existing KMP API
 - Published KMP JS artifacts
@@ -89,11 +89,6 @@ Currently verified:
 - `./gradlew :crypto-ffi:bindings:kmp:publishKotlinMultiplatformPublicationToMavenLocal`
 - `./gradlew :crypto-ffi:bindings:kmp:publishJsPublicationToMavenLocal`
 
-Not yet passing:
-
-- `./gradlew :crypto-ffi:bindings:kmp:compileKotlinWasmJs`
-
 Project-level wrappers:
 
 - `make kmp-js`
-- `make kmp-wasm`
