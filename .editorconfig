@@ -23,6 +23,10 @@ ktlint_standard_trailing-comma-on-call-site = disabled
 ktlint_standard_function-expression-body = disabled
 ktlint_standard_trailing-comma-on-declaration-site = disabled
 
+[crypto-ffi/bindings/kmp/web-template/com/wire/crypto/core_crypto_ffi.web.kt]
+ktlint_standard_filename = disabled
+max_line_length = off
+
 [Makefile]
 indent_style = tab
 
