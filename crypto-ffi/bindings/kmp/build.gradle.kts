@@ -1,7 +1,6 @@
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinMultiplatform
 import gobley.gradle.GobleyHost
-import gobley.gradle.cargo.dsl.*
 import gobley.gradle.rust.targets.RustPosixTarget
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 

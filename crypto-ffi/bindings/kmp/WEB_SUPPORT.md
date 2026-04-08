@@ -14,19 +14,27 @@ The existing public Kotlin API `com.wire.crypto.*` remains the consumer contract
 Supported on `js`:
 
 - Real implementation of `com.wire.crypto` backed by `@wireapp/core-crypto@9.3.3`
+
 - Internal WASM bootstrap via `initWasmModule(...)`
+
 - Compile support for consumers using the existing KMP API
+
 - Published KMP JS artifacts
+
 - Local browser smoke/contract tests in this repository covering:
+
   - `CoreCrypto.init(...)`
   - `clientPublicKey(...)`
   - `randomBytes(...)`
   - `transaction { ... }` data persistence and error propagation
   - `conversationExists(...)` and `createConversation(...)`
   - `version()`, `buildMetadata()`, `setLogger(...)`, `setMaxLogLevel(...)` after runtime init
+
 - Verified consumer integration in Kalium:
+
   - `:core:cryptography:compileKotlinJs`
   - `:logic:compileKotlinJs`
+
 - Initial web runtime bootstrap confirmed by the consumer side
 
 Important note:
@@ -38,8 +46,11 @@ Important note:
 ## Kotlin/JS Known Limitations
 
 - `exportDatabaseCopy(...)` is still unsupported on JS and throws a clear `CoreCryptoException.Other`
+
 - Browser runtime depends on the local webpack override in:
+
   - `webpack.config.d/corecrypto-wasm.js`
+
   to resolve the npm package WASM asset in `jsBrowserTest`
 
 This means:
@@ -70,12 +81,18 @@ The recommended path is a separate `wasmJs` implementation rather than trying to
 Required work:
 
 - Split the current web implementation into:
+
   - `js` adapter
   - `wasmJs` adapter
+
 - Rewrite externals to Kotlin/Wasm-compatible JS interop
+
 - Remove `dynamic`
+
 - Replace ad-hoc `js("...")` usage with Kotlin/Wasm-compatible wrappers
+
 - Rework callback and `Promise` interop for Kotlin/Wasm
+
 - Re-test WASM bootstrap and asset loading in browser runtime
 
 ## Verification Targets
