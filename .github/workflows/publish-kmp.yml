@@ -25,7 +25,7 @@ env:
 
 jobs:
   publish-kmp:
-    if: github.repository == 'MohamadJaara/core-crypto'
+    if: github.repository == 'MohamadJaara/core-crypto-kmp'
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v5
