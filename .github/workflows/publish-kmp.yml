@@ -54,6 +54,8 @@ jobs:
       # from a previous Linux build
       - name: download x86_64 linux jvm library
         uses: ./.github/actions/make
+        env:
+          RELEASE: 1
         with:
           key: jvm-linux
           make-rule: jvm-linux
@@ -79,7 +81,7 @@ jobs:
           rustup target add aarch64-apple-darwin
 
       - name: build macOS JVM library
-        run: make jvm-darwin
+        run: make jvm-darwin RELEASE=1
 
       - name: extract version from tag
         id: version
@@ -94,6 +96,7 @@ jobs:
         run: |
           ./gradlew publishAllPublicationsToMavenCentralRepository --no-configuration-cache -PVERSION_NAME=${{ steps.version.outputs.VERSION }}
         env:
+          RELEASE: 1
           ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SONATYPE_PASSWORD }}

@@ -50,6 +50,8 @@ jobs:
 
       - name: build jvm linux library
         uses: ./.github/actions/make/jvm
+        env:
+          RELEASE: 1
         with:
           gh-token: ${{ secrets.GITHUB_TOKEN }}
 
