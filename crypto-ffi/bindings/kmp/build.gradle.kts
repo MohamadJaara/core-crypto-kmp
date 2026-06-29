@@ -1,6 +1,7 @@
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinMultiplatform
 import gobley.gradle.GobleyHost
+import gobley.gradle.Variant
 import gobley.gradle.cargo.dsl.*
 import gobley.gradle.rust.targets.RustPosixTarget
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -199,6 +200,8 @@ cargo {
 
     // Configure features
     features.addAll("proteus")
+
+    nativeVariant.set(if (System.getenv("RELEASE") == "1") Variant.Release else Variant.Debug)
 
     // Only build JVM native libraries for the current host platform
     // This disables cross-compilation for other JVM targets (e.g., Linux ARM64 on macOS)
